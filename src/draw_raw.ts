@@ -88,16 +88,34 @@ export function draw_raw(ctx: CanvasRenderingContext2D, points: Vector[], last_d
     return null;
 }
 
-
-
-//            b          f
-//        a  /       e  /
-//       /  /       /  /
-//      /  /       /  /
-//     / A--------/B /
-//    /  /       /  /
-//   /  c       /  g
-//  d          h
+/**
+ * The rectangle `abcd` in the diagram below is the shape of the pen tip.
+ * `A` and `B` represent the position of the pen now and in some future frame.
+ * 
+ * Given the `origin` (`A`), `normal` and `tangent` vectors, compute_oblong will return abcd
+ * The normal and tangent vectors can be any two basis vectors really, but typically 
+ * we might use the pen tilt and its perpendicular for these values.
+ * If the pen tip shape is fixed in the direction of travel then we might use the vector `AB` as `tangent`.
+ * 
+ * ```text
+ *            b          f
+ *        a  /       e  /
+ *       /  /       /  /
+ *      /  /       /  /
+ *     / A--------/B /
+ *    /  /       /  /
+ *   /  c       /  g
+ *  d          h
+ * ```
+ * 
+ * @param origin the origin `A` in the above diagram
+ * @param normal
+ * @param tangent 
+ * @param pressure is used to scale the pen tip
+ * @param size_normal is the size of the pen tip in the normal direction.
+ * @param size_tangent is the size of the pen tip in the tangent direction.
+ * @returns `abcd` in the above diagram
+ */
 function compute_oblong(origin:Vector2, normal:Vector2, tangent:Vector2, pressure:number, size_normal:number, size_tangent:number) {
     let a = origin.add(normal.mul(size_normal * pressure));
     let d = origin.sub(normal.mul(size_normal * pressure));

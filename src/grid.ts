@@ -3,22 +3,41 @@ import { Rectangle, Vector2 } from "./geom";
 class GridBitmap{
     canvas:OffscreenCanvas;
     ctx:OffscreenCanvasRenderingContext2D;
-    position:Vector2;
-    extent:Rectangle
+    #position:Vector2;
+    #extent:Rectangle
     constructor(position:Vector2, size:Vector2){
         this.canvas = new OffscreenCanvas(size.x, size.y);
         this.ctx = this.canvas.getContext("2d");
-        this.position = position;
+        this.#position = position;
+        this.#extent = new Rectangle(position, position.add(size));
+        this.ctx.fillStyle = "white";
+        this.ctx.fillRect(0, 0, 1, 1);
+        this.ctx.fillStyle = "purple";
+    }
+    get position(){
+        return this.#position;
+    }
+    get extent(){
+        return this.#extent;
+    }
+    world_to_local(world_pos:Vector2){
+        return world_pos.sub(this.#position);
     }
 }
 
+interface Drawable{
+    draw(ctx:CanvasRenderingContext2D|OffscreenCanvasRenderingContext2D):void;
+    bounding_rectangle():Rectangle;
+    transformed(transformation:(points:Vector2)=>Vector2):Drawable;
+}
 
-class Polygon{
+
+class Polygon implements Drawable{
     points:Vector2[];
     constructor(points:Vector2[]){
         this.points = points;
     }
-    draw(ctx:CanvasRenderingContext2D){
+    draw(ctx:CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D){
         ctx.beginPath();
         for(let i = 0; i < this.points.length; i++){
             ctx.lineTo(this.points[i].x, this.points[i].y);
@@ -26,7 +45,7 @@ class Polygon{
         ctx.closePath();
         ctx.fill();
     }
-    compute_bounding_rectangle():Rectangle{
+    bounding_rectangle():Rectangle{
         return new Rectangle(
             this.points.reduce((a,b)=> new Vector2(
                 Math.min(a.x, b.x),
@@ -38,6 +57,9 @@ class Polygon{
             )),
         );
     }
+    transformed(transformation:(points:Vector2)=>Vector2):Polygon{
+        return new Polygon(this.points.map(transformation));
+    }
 }
 
 
@@ -48,7 +70,7 @@ export class CanvasGrid{
         this.bitmaps = [];
     }
     render_to_viewport(viewport:Viewport){
-        viewport.compute_world_extent
+        let bitmaps_to_draw = this.get_within_rectangle(viewport.world_extent());
         for(let bitmap of this.bitmaps){
             viewport.ctx.drawImage(bitmap.canvas, bitmap.position.x, bitmap.position.y);
         }
@@ -59,10 +81,15 @@ export class CanvasGrid{
     }
     /**
      * 
-     * @param polygon A polygon to render, given in screen coordinates
+     * @param polygon A polygon to render, given in world coordinates
      */
-    draw_polygon(polygon:Polygon){
-
+    draw_polygon(polygon_world:Polygon){
+        let polygon_bounds = polygon_world.bounding_rectangle().padded(this.cell_size);
+        let bitmaps_to_draw = this.get_within_rectangle(polygon_bounds);
+        for(let bitmap of bitmaps_to_draw){
+            let polygon_local = polygon_world.transformed(p => bitmap.world_to_local(p));
+            polygon_local.draw(bitmap.ctx);
+        }
     }
 
 }
@@ -132,7 +159,7 @@ export class Viewport{
     }
 
 
-    compute_world_extent():Rectangle{
+    world_extent():Rectangle{
         let half_width_height = this.half_width_height();
         return new Rectangle(this._centre.sub(half_width_height), this._centre.add(half_width_height));
     }

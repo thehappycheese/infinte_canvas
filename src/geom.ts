@@ -171,6 +171,21 @@ export class Vector2 {
     mul(s: number) {
         return new Vector2(this.x * s, this.y * s);
     }
+
+    /**
+     * @returns {number} A new vector composed of the element-wise minimum of each component
+     */
+    emin(v: Vector2) {
+        return new Vector2(Math.min(this.x, v.x), Math.min(this.y, v.y));
+    }
+
+    /**
+     * @returns {number} A new vector composed of the element-wise maximum of each component
+     */
+    emax(v: Vector2) {
+        return new Vector2(Math.max(this.x, v.x), Math.max(this.y, v.y));
+    }
+    
     /**
      * @returns {number} A new vector which has been element-wise divided by the scalar `s`
      * @throws {DivideByZeroError} if s is zero
@@ -286,9 +301,20 @@ export class Rectangle {
         return id.x > 0 && id.y > 0;
     }
 
-    minimum_distance(other: Rectangle) {
-        let id = this.interval_distance(other);
-        return Math.min(id.x, id.y);
+    union(other: Rectangle) {
+        let tl = new Vector2(
+            Math.min(this.top_left.x, other.top_left.x),
+            Math.min(this.top_left.y, other.top_left.y)
+        );
+        let br = new Vector2(Math.max(this.bottom_right.x, other.bottom_right.x), Math.max(this.bottom_right.y, other.bottom_right.y));
+        return new Rectangle(tl, br);
+    }
+
+    padded(padding: Vector2) {
+        return new Rectangle(
+            this.top_left    .sub(new Vector2(padding.x, padding.y)),
+            this.bottom_right.add(new Vector2(padding.x, padding.y))
+        );
     }
 
 

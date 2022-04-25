@@ -1,14 +1,10 @@
 import { Vector } from "./geom";
 import { Simplifier } from "./Simplifier";
-import { CanvasGrid } from "./grid";
+import { CanvasGrid, Viewport } from "./grid";
 import "./style.css";
 import { draw_raw } from "./draw_raw";
 
 
-let canvas_overlay: HTMLCanvasElement;
-let canvas_underlay: HTMLCanvasElement;
-let ctx_overlay: CanvasRenderingContext2D;
-let ctx_underlay: CanvasRenderingContext2D;
 
 let pointerdown = false;
 let simplifier: Simplifier = new Simplifier({
@@ -20,12 +16,15 @@ let simplifier: Simplifier = new Simplifier({
 
 
 
-canvas_overlay  = document.querySelector("#overlay") as HTMLCanvasElement;
-canvas_underlay = document.querySelector("#underlay") as HTMLCanvasElement;
+let canvas_overlay: HTMLCanvasElement = document.querySelector("#overlay") as HTMLCanvasElement;
+let canvas_underlay: HTMLCanvasElement = document.querySelector("#underlay") as HTMLCanvasElement;
+let canvas_new_underlay = document.querySelector("#nunderlay") as HTMLCanvasElement;
+
+let viewport = new Viewport(canvas_new_underlay);
 
 
-ctx_overlay  = configure_canvas(canvas_overlay);
-ctx_underlay = configure_canvas(canvas_underlay);
+let ctx_overlay: CanvasRenderingContext2D = configure_canvas(canvas_overlay);
+let ctx_underlay: CanvasRenderingContext2D = configure_canvas(canvas_underlay);
 
 function configure_canvas(canvas: HTMLCanvasElement) {
     canvas.width = canvas.parentElement.clientWidth;
@@ -61,10 +60,10 @@ canvas_overlay.addEventListener("pointermove", function (e) {
     }
 });
 
-canvas_overlay.addEventListener("pointerleave",  stop_draw);
-canvas_overlay.addEventListener("pointerout",    stop_draw);
+canvas_overlay.addEventListener("pointerleave", stop_draw);
+canvas_overlay.addEventListener("pointerout", stop_draw);
 canvas_overlay.addEventListener("pointercancel", stop_draw);
-canvas_overlay.addEventListener("pointerup",     stop_draw);
+canvas_overlay.addEventListener("pointerup", stop_draw);
 
 
 
