@@ -1,0 +1,104 @@
+import { Vector } from "./geom";
+import { Simplifier } from "./Simplifier";
+import { CanvasGrid } from "./grid";
+import "./style.css";
+import { draw_raw } from "./draw_raw";
+
+
+let canvas_overlay: HTMLCanvasElement;
+let canvas_underlay: HTMLCanvasElement;
+let ctx_overlay: CanvasRenderingContext2D;
+let ctx_underlay: CanvasRenderingContext2D;
+
+let pointerdown = false;
+let simplifier: Simplifier = new Simplifier({
+    queue_length: 10,
+    min_distance: 1,
+    max_distance: 5,
+    smoothing_factor: 0.1
+});
+
+
+
+canvas_overlay  = document.querySelector("#overlay") as HTMLCanvasElement;
+canvas_underlay = document.querySelector("#underlay") as HTMLCanvasElement;
+
+
+ctx_overlay  = configure_canvas(canvas_overlay);
+ctx_underlay = configure_canvas(canvas_underlay);
+
+function configure_canvas(canvas: HTMLCanvasElement) {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+    let ctx = canvas.getContext("2d");
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#bf2a64";
+    ctx.fillStyle = "#bf2a64";
+    ctx.lineCap = "round";
+    return ctx
+}
+
+let project_tilt_from_angle = (tilt_angle: number) => Math.sin(tilt_angle / 180 * Math.PI);
+
+canvas_overlay.addEventListener("pointerdown", function (e) {
+    e.preventDefault()
+    if (e.pointerType !== "pen")
+        return;
+    pointerdown = true;
+    canvas_overlay.setPointerCapture(e.pointerId);
+    simplifier.add_point(new Vector([e.offsetX, e.offsetY, e.pressure, project_tilt_from_angle(e.tiltX), project_tilt_from_angle(e.tiltY)]));
+    draw();
+});
+
+canvas_overlay.addEventListener("pointermove", function (e) {
+    e.preventDefault()
+    if (e.pointerType !== "pen")
+        return;
+    if (pointerdown) {
+        simplifier.add_point(new Vector([e.offsetX, e.offsetY, e.pressure, project_tilt_from_angle(e.tiltX), project_tilt_from_angle(e.tiltY)]));
+        draw()
+
+    }
+});
+
+canvas_overlay.addEventListener("pointerleave",  stop_draw);
+canvas_overlay.addEventListener("pointerout",    stop_draw);
+canvas_overlay.addEventListener("pointercancel", stop_draw);
+canvas_overlay.addEventListener("pointerup",     stop_draw);
+
+
+
+function clear_canvas(ctx: CanvasRenderingContext2D) {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
+function stop_draw(e: PointerEvent) {
+    e.preventDefault()
+    if (e.pointerType !== "pen")
+        return;
+    draw_end();
+    pointerdown = false;
+    canvas_overlay.releasePointerCapture(e.pointerId);
+}
+
+
+
+let last_drawn_point_and_pressure: Vector | null = null;
+function draw() {
+    let ready_points = simplifier.get_ready_items();
+    if (ready_points.length > 0) {
+        last_drawn_point_and_pressure = draw_raw(ctx_underlay, ready_points, last_drawn_point_and_pressure);
+        clear_canvas(ctx_overlay);
+        draw_raw(ctx_overlay, simplifier.points, last_drawn_point_and_pressure);
+    }
+}
+
+function draw_end() {
+    draw_raw(ctx_underlay, simplifier.points, last_drawn_point_and_pressure);
+    simplifier.clear();
+    last_drawn_point_and_pressure = null;
+    clear_canvas(ctx_overlay);
+}
+
+
+
