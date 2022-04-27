@@ -173,6 +173,15 @@ export class Vector2 {
     }
 
     /**
+     * 
+     * @param v 
+     * @returns {Vector2} A new vector which has been element-wise multiplied by `v`
+     */
+    emul(v: Vector2) {
+        return new Vector2(this.x * v.x, this.y * v.y);
+    }
+
+    /**
      * @returns {number} A new vector composed of the element-wise minimum of each component
      */
     emin(v: Vector2) {
@@ -185,7 +194,15 @@ export class Vector2 {
     emax(v: Vector2) {
         return new Vector2(Math.max(this.x, v.x), Math.max(this.y, v.y));
     }
-    
+    /**
+     * 
+     * @param v 
+     * @returns {number} A new vector composed of the element-wise division of each component
+     */
+    ediv(v: Vector2) {
+        return new Vector2(this.x / v.x, this.y / v.y);
+    }
+
     /**
      * @returns {number} A new vector which has been element-wise divided by the scalar `s`
      * @throws {DivideByZeroError} if s is zero
@@ -208,6 +225,14 @@ export class Vector2 {
      */
     magsq() {
         return this.x * this.x + this.y * this.y;
+    }
+
+    /**
+     * @param f
+     * @returns {Vector2} A new vector which has has the function f applied to each element
+     */
+    emap(f:(x:number)=>number) {
+        return new Vector2(f(this.x), f(this.y));
     }
 
     /**
@@ -315,6 +340,12 @@ export class Rectangle {
             this.top_left    .sub(new Vector2(padding.x, padding.y)),
             this.bottom_right.add(new Vector2(padding.x, padding.y))
         );
+    }
+    width(){
+        return this.bottom_right.x - this.top_left.x;
+    }
+    height(){
+        return this.bottom_right.y - this.top_left.y;
     }
 
 

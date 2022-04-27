@@ -1,8 +1,9 @@
-import { Vector } from "./geom";
+import { Vector, Vector2 } from "./geom";
 import { Simplifier } from "./Simplifier";
-import { CanvasGrid, Viewport } from "./grid";
+import { CanvasGrid } from "./CanvasGrid";
+import { Viewport } from "./Viewport";
 import "./style.css";
-import { draw_raw } from "./draw_raw";
+import { draw_raw, draw_raw_polygon, PenTip_Chisel } from "./draw_raw";
 
 
 
@@ -21,7 +22,12 @@ let canvas_underlay: HTMLCanvasElement = document.querySelector("#underlay") as 
 let canvas_new_underlay = document.querySelector("#nunderlay") as HTMLCanvasElement;
 
 let viewport = new Viewport(canvas_new_underlay);
-
+let pen_tip:PenTip_Chisel = {
+    size_normal_px:  30/2,
+    size_tangent_px: 20/2,
+    skew_between_normal_and_tangent_rad:50 / 180 * Math.PI
+}
+let canvas_grid = new CanvasGrid(new Vector2(80, 80));
 
 let ctx_overlay: CanvasRenderingContext2D = configure_canvas(canvas_overlay);
 let ctx_underlay: CanvasRenderingContext2D = configure_canvas(canvas_underlay);
@@ -86,10 +92,13 @@ let last_drawn_point_and_pressure: Vector | null = null;
 function draw() {
     let ready_points = simplifier.get_ready_items();
     if (ready_points.length > 0) {
-        last_drawn_point_and_pressure = draw_raw(ctx_underlay, ready_points, last_drawn_point_and_pressure);
+        //last_drawn_point_and_pressure = draw_raw(ctx_underlay, ready_points, last_drawn_point_and_pressure);
         clear_canvas(ctx_overlay);
         draw_raw(ctx_overlay, simplifier.points, last_drawn_point_and_pressure);
+
+        draw_raw_polygon(canvas_grid, viewport, ready_points, last_drawn_point_and_pressure, pen_tip);
     }
+    canvas_grid.render_cells_to_viewport(viewport);
 }
 
 function draw_end() {

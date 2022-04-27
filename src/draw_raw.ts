@@ -1,5 +1,8 @@
+import { CanvasGrid } from "./CanvasGrid";
+import { Polygon } from "./Drawable";
 import { Vector, Vector2 } from "./geom";
-import { pairwise } from "./itertools_eager";
+import { pairwise, transpose, wrap } from "./itertools_eager";
+import { Viewport } from "./Viewport";
 
 export function draw_raw(ctx: CanvasRenderingContext2D, points: Vector[], last_drawn_point_and_pressure: Vector | null = null) {
     if (points.length > 0) {
@@ -10,23 +13,11 @@ export function draw_raw(ctx: CanvasRenderingContext2D, points: Vector[], last_d
 
         let lineTo = (v: Vector2) => ctx.lineTo(v.x, v.y);
 
+        const size_normal = 30 / 2;
+        const size_tangent = 20 / 2;
+        const skew_between_normal_and_tangent = 50 / 180 * Math.PI;
+
         for (let [[x1, y1, pressure_a, tx1, ty1], [x2, y2, pressure_b, tx2, ty2]] of pairwise(points)) {
-
-
-            /**
-             * Size Normal / 2
-             */
-            const size_normal = 30 / 2;
-
-            /**
-             * Size Tangent / 2
-             */
-            const size_tangent = 20 / 2;
-
-            /**
-             * Skew between normal and tangent
-             */
-            const skew_between_normal_and_tangent = 50 / 180 * Math.PI;
 
             let origin_a = new Vector2(x1, y1);
             let origin_b = new Vector2(x2, y2);
@@ -86,6 +77,58 @@ export function draw_raw(ctx: CanvasRenderingContext2D, points: Vector[], last_d
         return points[points.length - 1];
     }
     return null;
+}
+
+export interface PenTip_Chisel{
+    size_normal_px:number;
+    size_tangent_px:number;
+    skew_between_normal_and_tangent_rad:number;
+}
+
+export function draw_raw_polygon(
+        ctx: CanvasGrid,
+        viewport:Viewport,
+        points: Vector[],
+        last_drawn_point_and_pressure: Vector | null,
+        pen_tip:PenTip_Chisel
+    ):Vector|null {
+    
+    if (last_drawn_point_and_pressure !== null) {
+        points = [last_drawn_point_and_pressure, ...points];
+    }
+    if(points.length > 1) {
+
+        let pen_tip_shapes = points.map(([x, y, pressure, tx, ty]) => {
+            let origin = new Vector2(x, y);
+            let normal  = new Vector2(tx, ty);
+            let tangent = normal.rotated(pen_tip.skew_between_normal_and_tangent_rad);
+            return compute_oblong(
+                origin,
+                normal,
+                tangent,
+                pressure,
+                pen_tip.size_normal_px,
+                pen_tip.size_tangent_px
+            );
+        })
+        
+        let pen_tip_corner_paths = transpose(pen_tip_shapes);
+
+        let polygons = pairwise(wrap(pen_tip_corner_paths)).map(([a,b]) => new Polygon([
+            ...a,
+            ...b.reverse()
+        ]));
+
+        // TODO: errghhhhhhh
+        polygons.map(polygon => polygon.transformed(viewport.viewport_to_world.bind(viewport)));
+
+        polygons.forEach(polygon => ctx.draw_polygon(polygon));
+
+        return points[points.length - 1];
+    }else{
+        return null
+    }
+
 }
 
 /**

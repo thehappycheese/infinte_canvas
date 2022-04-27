@@ -6,5 +6,5 @@
     "target": "es6",
     "allowJs": true
   },
-  "files": ["src/index.ts", "./src/draw_raw.ts"]
+  "files": ["src/index.ts", "./src/draw_raw.ts", "./src/CanvasGrid.ts", "./src/Viewport.ts", "./src/Drawable.ts"]
 }
