@@ -10,8 +10,8 @@ export class GridBitmap{
         this.ctx = this.canvas.getContext("2d");
         this.#position = position;
         this.#extent = new Rectangle(position, position.add(size));
-        this.ctx.fillStyle = "white";
-        this.ctx.fillRect(0, 0, 1, 1);
+        this.ctx.fillStyle = "#3a3a3a";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = "purple";
     }
     get position(){

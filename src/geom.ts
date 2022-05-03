@@ -348,5 +348,17 @@ export class Rectangle {
         return this.bottom_right.y - this.top_left.y;
     }
 
+    top_right() {
+        return new Vector2(
+            this.bottom_right.x,
+            this.top_left.y
+        )
+    }
+    bottom_left() {
+        return new Vector2(
+            this.top_left.x,
+            this.bottom_right.y
+        )
+    }
 
 }

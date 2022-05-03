@@ -35,4 +35,13 @@ export class Polygon implements Drawable{
     transformed(transformation:(points:Vector2)=>Vector2):Polygon{
         return new Polygon(this.points.map(transformation));
     }
+
+    static from_rectangle(rect:Rectangle):Polygon{
+        return new Polygon([
+            rect.top_left,
+            rect.top_right(),
+            rect.bottom_right,
+            rect.bottom_left(),
+        ]);
+    }
 }

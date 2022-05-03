@@ -32,3 +32,13 @@ export function transpose<T>(arr:T[][]): T[][] {
 export function wrap<T>(arr:T[]):T[]{
     return [...arr, arr[0]];
 }
+
+
+/**
+ * 
+ * @param arr an array of pairs of arrays
+ * @returns an array of arrays where each pair of arrays in the original array has been joined into a single array, with the first element going forwards, and the second element going backwards.
+ */
+export function forwards_backwards<T>(arr:[T[],T[]][]):T[][]{
+    return arr.map(([a,b]) => [...a,...b.slice().reverse()])
+}

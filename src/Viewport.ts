@@ -20,22 +20,37 @@ export class Viewport {
     ctx: CanvasRenderingContext2D;
     _zoom: number = 1;
     _centre: Vector2 = new Vector2(0, 0);
+
     constructor(canvas: HTMLCanvasElement) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
     }
+
     pixel_length_to_world_length(length: number): number {
         return length / this._zoom;
     }
+
     world_length_to_pixel_length(length: number): number {
         return length * this._zoom;
     }
 
     viewport_to_world(viewport_pixel: Vector2): Vector2 {
-        return viewport_pixel.sub(this.top_left()).div(this._zoom);
+        return this._centre.add(viewport_pixel.div(this._zoom));
     }
+    
     world_to_viewport(world_point: Vector2): Vector2 {
-        return world_point.mul(this._zoom).add(this.top_left());
+        return world_point.sub(this._centre).div(this._zoom);
+    }
+
+    translate(delta: Vector2) {
+        this._centre = this._centre.add(delta);
+    }
+    zoom_by(factor:number){
+        this._zoom *= factor;
+    }
+    reset_view(){
+        this._zoom = 1;
+        this._centre = new Vector2(0, 0);
     }
 
     get zoom(): number {

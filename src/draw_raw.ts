@@ -1,83 +1,8 @@
 import { CanvasGrid } from "./CanvasGrid";
 import { Polygon } from "./Drawable";
 import { Vector, Vector2 } from "./geom";
-import { pairwise, transpose, wrap } from "./itertools_eager";
+import { forwards_backwards, pairwise, transpose, wrap } from "./itertools_eager";
 import { Viewport } from "./Viewport";
-
-export function draw_raw(ctx: CanvasRenderingContext2D, points: Vector[], last_drawn_point_and_pressure: Vector | null = null) {
-    if (points.length > 0) {
-
-        if (last_drawn_point_and_pressure !== null) {
-            points = [last_drawn_point_and_pressure, ...points];
-        }
-
-        let lineTo = (v: Vector2) => ctx.lineTo(v.x, v.y);
-
-        const size_normal = 30 / 2;
-        const size_tangent = 20 / 2;
-        const skew_between_normal_and_tangent = 50 / 180 * Math.PI;
-
-        for (let [[x1, y1, pressure_a, tx1, ty1], [x2, y2, pressure_b, tx2, ty2]] of pairwise(points)) {
-
-            let origin_a = new Vector2(x1, y1);
-            let origin_b = new Vector2(x2, y2);
-
-            let normal_a = new Vector2(tx1, ty1);
-            let normal_b = new Vector2(tx2, ty2);
-
-            let tangent_a = new Vector2(tx1, ty1).rotated(skew_between_normal_and_tangent);
-            let tangent_b = new Vector2(tx2, ty2).rotated(skew_between_normal_and_tangent);
-
-            //            b          f
-            //        a  /       e  /
-            //       /  /       /  /
-            //      /  /       /  /
-            //     / A--------/B /
-            //    /  /       /  /
-            //   /  c       /  g
-            //  d          h
-
-            let [a,b,c,d] = compute_oblong(origin_a, normal_a, tangent_a, pressure_a, size_normal, size_tangent);
-            let [e,f,g,h] = compute_oblong(origin_b, normal_b, tangent_b, pressure_b, size_normal, size_tangent);
-
-
-            //ctx.fillStyle = "#bf2a64";
-            ctx.beginPath();
-            lineTo(a);
-            lineTo(e);
-            lineTo(h);
-            lineTo(d);
-            ctx.fill();
-
-            //ctx.fillStyle = "#64bf2a";
-            ctx.beginPath();
-            lineTo(b);
-            lineTo(f);
-            lineTo(g);
-            lineTo(c);
-            ctx.fill();
-
-            //ctx.fillStyle = "#2a64bf";
-            ctx.beginPath();
-            lineTo(a);
-            lineTo(b);
-            lineTo(f);
-            lineTo(e);
-            ctx.fill();
-
-            //ctx.fillStyle = "#642abf";
-            ctx.beginPath();
-            lineTo(d);
-            lineTo(c);
-            lineTo(g);
-            lineTo(h);
-            ctx.fill();
-        }
-
-        return points[points.length - 1];
-    }
-    return null;
-}
 
 export interface PenTip_Chisel{
     size_normal_px:number;
@@ -88,46 +13,35 @@ export interface PenTip_Chisel{
 export function draw_raw_polygon(
         ctx: CanvasGrid,
         viewport:Viewport,
-        points: Vector[],
-        last_drawn_point_and_pressure: Vector | null,
+        points_viewport: Vector[],
         pen_tip:PenTip_Chisel
-    ):Vector|null {
+    ){
     
-    if (last_drawn_point_and_pressure !== null) {
-        points = [last_drawn_point_and_pressure, ...points];
-    }
-    if(points.length > 1) {
+    if(points_viewport.length < 2)
+        throw new Error("At least two points are required to draw a polygon");
 
-        let pen_tip_shapes = points.map(([x, y, pressure, tx, ty]) => {
-            let origin = new Vector2(x, y);
-            let normal  = new Vector2(tx, ty);
-            let tangent = normal.rotated(pen_tip.skew_between_normal_and_tangent_rad);
-            return compute_oblong(
-                origin,
-                normal,
-                tangent,
-                pressure,
-                pen_tip.size_normal_px,
-                pen_tip.size_tangent_px
-            );
-        })
-        
-        let pen_tip_corner_paths = transpose(pen_tip_shapes);
+    let pen_tip_shapes = points_viewport.map(([x, y, pressure, tx, ty]) => {
+        let origin = new Vector2( x,  y);
+        let normal = new Vector2(tx, ty);
+        // TODO: optimize this next line to 90 deg rotation
+        let tangent = normal.rotated(pen_tip.skew_between_normal_and_tangent_rad);
+        return compute_oblong(
+            origin,
+            normal,
+            tangent,
+            pressure,
+            pen_tip.size_normal_px,
+            pen_tip.size_tangent_px
+        );
+    })
 
-        let polygons = pairwise(wrap(pen_tip_corner_paths)).map(([a,b]) => new Polygon([
-            ...a,
-            ...b.reverse()
-        ]));
+    //pen_tip_shapes.forEach((points) => points.forEach(point => ctx.draw_point(point)))
+    
+    let polygons_viewport = forwards_backwards(pairwise(wrap(transpose(pen_tip_shapes)))).map(points => new Polygon(points));
 
-        // TODO: errghhhhhhh
-        polygons.map(polygon => polygon.transformed(viewport.viewport_to_world.bind(viewport)));
+    let polygons_world = polygons_viewport.map(polygon => polygon.transformed(point=>viewport.viewport_to_world(point)));
 
-        polygons.forEach(polygon => ctx.draw_polygon(polygon));
-
-        return points[points.length - 1];
-    }else{
-        return null
-    }
+    polygons_world.forEach(polygon => ctx.draw_polygon(polygon));
 
 }
 
@@ -155,14 +69,16 @@ export function draw_raw_polygon(
  * @param normal
  * @param tangent 
  * @param pressure is used to scale the pen tip
- * @param size_normal is the size of the pen tip in the normal direction.
- * @param size_tangent is the size of the pen tip in the tangent direction.
- * @returns `abcd` in the above diagram
+ * @param radius_normal is half the size of the pen tip in the normal direction.
+ * @param radius_tangent is half the size of the pen tip in the tangent direction.
+ * @returns `abcd` in the above diagram, where A---B represents the movement of the pen tip, and abcd are the corners of the pen shape at point A.
  */
-function compute_oblong(origin:Vector2, normal:Vector2, tangent:Vector2, pressure:number, size_normal:number, size_tangent:number) {
-    let a = origin.add(normal.mul(size_normal * pressure));
-    let d = origin.sub(normal.mul(size_normal * pressure));
-    let b = a.add(tangent.mul(size_tangent * pressure));
-    let c = d.add(tangent.mul(size_tangent * pressure));
+function compute_oblong(origin:Vector2, normal:Vector2, tangent:Vector2, pressure:number, radius_normal:number, radius_tangent:number) {
+    let norm = normal.mul(radius_normal * pressure);
+    let tang = tangent.mul(radius_tangent * pressure);
+    let a = origin.add(norm);
+    let d = origin.sub(norm);
+    let b = a.add(tang);
+    let c = d.add(tang);
     return [a,b,c,d];
 }

@@ -6,15 +6,18 @@ export class Simplifier {
     min_distance_squared: number;
     max_distance_squared:number;
     smoothing_factor:number;
+
     constructor({queue_length, min_distance, max_distance, smoothing_factor}: {queue_length: number, min_distance: number, max_distance:number, smoothing_factor: number}) {
         this.queue_length = queue_length;
         this.min_distance_squared = min_distance*min_distance;
         this.max_distance_squared = max_distance*max_distance;
         this.smoothing_factor = smoothing_factor;
     }
+
     last_point() {
         return this.points[this.points.length - 1];
     }
+
     add_point(p:Vector) {
         if (this.points.length < 1) {
             this.points.push(p);
@@ -26,10 +29,12 @@ export class Simplifier {
             }
         }
     }
+
     smooth_points(){
         this.interpolate_points();
         this.relax_points();
     }
+
     interpolate_points() {
         for(let i = 0;i<this.points.length-1;i++){
             let a = this.points[i];
@@ -50,6 +55,7 @@ export class Simplifier {
             }
         }
     }
+
     relax_points(){
         // hold first and last points stationary,
         // and apply a relaxation force to the points in between
@@ -68,14 +74,30 @@ export class Simplifier {
             this.points[i] = this.points[i].add(forces[i]);
         }
     }
+
+    /**
+     * @returns the number of points that are ready to be drawn. A zero or negative number is returned if no points are ready.
+     */
+    count_ready_items():number {
+        return this.points.length - this.queue_length;
+    }
+
+    /**
+     * @returns return the simplified smoothed points that are ready to be drawn. An empty array if no points are ready.
+     */
     get_ready_items():Vector[] {
-        // return the simplified smoothed points that are ready to be drawn
-        let result:Vector[] = [];
-        while (this.points.length > this.queue_length) {
-            result.push(this.points.shift());
-        }
+        // remove and return the first count points from this.points
+        // Note, it is ok for negative count to be passed into splice. At least according to MDN.
+        return this.points.splice(0, this.count_ready_items());
+    }
+
+    get_remaining_and_clear():Vector[] {
+        // return the remaining points and clear the queue
+        let result = this.points;
+        this.points = [];
         return result;
     }
+
     clear() {
         this.points = [];
     }
